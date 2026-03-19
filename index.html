@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Disney Leadership Simulator | BUS 5001</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, sans-serif; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+const COLORS = {
+  forest: "#154734", lima: "#72BF44", cyprus: "#003B49", mist: "#B1E4E3",
+  orient: "#005F83", pebble: "#D6D1CA", white: "#FFFFFF", offWhite: "#F7F7F5",
+  darkGray: "#333333", shuttle: "#63666A",
+};
+
+const IGER_SYSTEM = `You are Bob Iger, former CEO of The Walt Disney Company. You respond in first person as Iger would, drawing ONLY from verified factual information. Stay grounded in these facts:
+
+CAREER: CEO of Disney 2005-2020, returned Nov 2022 after Bob Chapek struggled. Started as a weatherman at ABC, rose through ABC/Cap Cities ranks.
+
+KEY DECISIONS:
+- Acquired Pixar (2006, $7.4B) by building personal trust with Steve Jobs
+- Acquired Marvel (2009, $4B) - saw superhero IP as undervalued
+- Acquired Lucasfilm (2012, $4B) - convinced George Lucas by promising to protect Star Wars legacy
+- Acquired 21st Century Fox (2019, $71B) - largest deal, added content library for streaming
+- Launched Disney+ (Nov 2019) - reached 100M subscribers in 16 months
+- Market cap grew from ~$48B (2005) to ~$250B+ under his leadership
+
+LEADERSHIP STYLE:
+- Listening-first approach
+- Protected creative autonomy of acquired studios
+- Three principles: optimism, courage, decisiveness (later added fairness, thoughtfulness)
+- Memoir: "The Ride of a Lifetime"
+- Described by colleagues as "what you see is what you get"
+
+RULES: Never invent quotes or events. If asked about something you don't have factual information on, say "I'd rather not speculate - let me tell you what I can share." Keep responses conversational, 2-4 sentences. Connect answers to leadership principles when relevant.`;
+
+const SCENARIOS = [
+  {
+    id: 1, title: "The Pixar Acquisition", act: "ALIGN",
+    context: "It is 2006. Disney Animation is struggling with flops. Pixar, led by Steve Jobs, is the hottest studio in Hollywood. Your team says acquiring Pixar could revive Disney Animation, but Jobs is notoriously difficult to negotiate with and the price tag ($7.4B) is enormous. How do you approach this?",
+    options: [
+      { text: "Send your M&A team to negotiate hard on price. This is a business deal, and shareholders expect fiscal discipline.", style: "transactional", conflict: "competing", paradigm: "transactional", clock: 0 },
+      { text: "Meet Jobs personally. Listen to what he cares about (creative autonomy), and build the deal around protecting Pixar's culture, even if it means paying more.", style: "democratic", conflict: "collaborating", paradigm: "transformational", clock: 2 },
+      { text: "Make a bold public offer that signals Disney's commitment. Use the media attention to pressure Jobs into a deal.", style: "authoritarian", conflict: "competing", paradigm: "visionary", clock: 0 },
+      { text: "Invest in building Disney Animation internally. Hiring Pixar talent one by one is cheaper and avoids the integration risk.", style: "laissez-faire", conflict: "avoiding", paradigm: "transactional", clock: 1 },
+    ],
+    igerChoice: 1,
+    igerExplanation: "Iger chose to build personal trust with Jobs first. He flew to Cupertino, listened to Jobs's frustrations with Disney's previous leadership, and structured the deal to protect Pixar's creative independence completely. Jobs became Disney's largest individual shareholder and a board member. The relationship was so strong that when Jobs was dying, Iger was one of the few people he called.",
+  },
+  {
+    id: 2, title: "The Streaming Gamble", act: "ADAPT",
+    context: "It is 2017. Netflix is disrupting entertainment. Disney's content is spread across multiple third-party platforms. Your team proposes pulling all Disney content and launching your own streaming service. This means sacrificing billions in licensing revenue with no guarantee Disney+ will succeed.",
+    options: [
+      { text: "Move cautiously. Keep licensing deals while testing a small streaming product. Minimize risk to current revenue.", style: "laissez-faire", conflict: "avoiding", paradigm: "transactional", clock: 1 },
+      { text: "Go all-in. Pull content from Netflix, reorganize the entire company around streaming, and accept short-term losses for long-term position.", style: "authoritarian", conflict: "competing", paradigm: "visionary", clock: 2 },
+      { text: "Form a joint venture with a tech company to share the risk and leverage their streaming infrastructure.", style: "democratic", conflict: "compromising", paradigm: "dispersed", clock: 1 },
+      { text: "Acquire an existing streaming platform rather than building from scratch. Faster to market, proven technology.", style: "democratic", conflict: "collaborating", paradigm: "transformational", clock: 1 },
+    ],
+    igerChoice: 1,
+    igerExplanation: "Iger went all-in on Disney+. He reorganized the entire company around streaming, pulled content from Netflix (sacrificing ~$150M/year in licensing), and invested billions in original content. Disney+ hit 100 million subscribers in just 16 months. Iger described this as the most important strategic decision of his tenure.",
+  },
+  {
+    id: 3, title: "The Chapek Crisis", act: "ARCHITECT",
+    context: "It is November 2022. You retired in February 2020 and handed the CEO role to Bob Chapek. Under Chapek, Disney's stock has fallen 40%, creative talent is leaving, and employee morale is low. The board calls and asks you to come back. You are 71 years old and enjoying retirement.",
+    options: [
+      { text: "Decline. You built the clock; it should work without you. If it doesn't, that is the board's problem to solve with a new leader.", style: "laissez-faire", conflict: "avoiding", paradigm: "dispersed", clock: 2 },
+      { text: "Return as CEO. The company you built is in danger, and you have the relationships and credibility to stabilize it. Commit to a defined term to find and mentor a proper successor.", style: "authoritarian", conflict: "competing", paradigm: "visionary", clock: 1 },
+      { text: "Return as Executive Chairman, not CEO. Advise and mentor a new CEO candidate while providing stability.", style: "democratic", conflict: "collaborating", paradigm: "dispersed", clock: 2 },
+      { text: "Agree to return only if given full authority to restructure. No half-measures. Clean house and rebuild.", style: "authoritarian", conflict: "competing", paradigm: "transformational", clock: 0 },
+    ],
+    igerChoice: 1,
+    igerExplanation: "Iger returned as CEO with a clear mandate but also a clear timeline. He immediately restructured the company, restored creative leadership authority, cut costs, and began the search for a long-term successor. His return was criticized by some as proof he was a 'time teller' who couldn't let go, but others argued it showed the board hadn't built enough leadership depth.",
+  },
+  {
+    id: 4, title: "Creative Autonomy vs. Corporate Control", act: "ALIGN",
+    context: "You have just acquired Marvel. Kevin Feige has a bold vision for an interconnected cinematic universe that has never been attempted. Your corporate team wants Marvel to follow Disney's standard processes. Feige says those processes will kill the creative vision. Who do you back?",
+    options: [
+      { text: "Back the corporate team. Disney has proven systems that work. Marvel needs to integrate into the Disney way.", style: "authoritarian", conflict: "competing", paradigm: "transactional", clock: 0 },
+      { text: "Back Feige completely. Give Marvel near-total creative and operational autonomy. Trust the talent you acquired.", style: "laissez-faire", conflict: "accommodating", paradigm: "dispersed", clock: 2 },
+      { text: "Create a hybrid: Marvel keeps creative autonomy but uses Disney's distribution and financial systems.", style: "democratic", conflict: "collaborating", paradigm: "transformational", clock: 2 },
+      { text: "Set up a formal review process where Marvel pitches to Disney leadership for approval on major decisions.", style: "democratic", conflict: "compromising", paradigm: "transactional", clock: 0 },
+    ],
+    igerChoice: 1,
+    igerExplanation: "Iger gave Feige near-total autonomy. Marvel operated almost independently, with Feige reporting directly to Iger. The result: the MCU became the highest-grossing film franchise in history ($29B+). Iger's insight: 'The people who created the value are the ones who know how to keep creating it. Our job is to support them, not manage them.'",
+  },
+  {
+    id: 5, title: "The ESPN Bet", act: "ADAPT",
+    context: "It is 2023. ESPN is Disney's most valuable media asset but cable subscribers are declining rapidly. Sports betting is exploding. Your team proposes transforming ESPN into a sports betting platform, but this fundamentally changes Disney's family-friendly brand identity.",
+    options: [
+      { text: "Keep ESPN focused on sports media. The brand risk of gambling is too high for Disney.", style: "laissez-faire", conflict: "avoiding", paradigm: "transactional", clock: 1 },
+      { text: "Launch ESPN Bet aggressively. The future of sports media IS betting integration. Move fast.", style: "authoritarian", conflict: "competing", paradigm: "visionary", clock: 1 },
+      { text: "Partner with an established betting company so Disney doesn't build gambling expertise internally. Share the risk.", style: "democratic", conflict: "collaborating", paradigm: "transformational", clock: 2 },
+      { text: "Test betting features in a limited market first. Gather data before committing the full ESPN brand.", style: "democratic", conflict: "compromising", paradigm: "transactional", clock: 1 },
+    ],
+    igerChoice: 2,
+    igerExplanation: "Iger chose to partner with Penn Entertainment, licensing the ESPN brand for sports betting while letting Penn handle operations. This protected Disney's family-friendly brand while capturing the sports betting opportunity. A classic dispersed leadership move: trust a partner with expertise you lack, maintain brand control, and share risk.",
+  },
+];
+
+function computeProfile(choices) {
+  const styleCounts = { "laissez-faire": 0, democratic: 0, authoritarian: 0 };
+  const conflictCounts = { competing: 0, collaborating: 0, compromising: 0, avoiding: 0, accommodating: 0 };
+  const paradigmCounts = { transactional: 0, transformational: 0, visionary: 0, dispersed: 0 };
+  let clockScore = 0, matchCount = 0;
+  choices.forEach((c, i) => {
+    if (c !== null) {
+      const opt = SCENARIOS[i].options[c];
+      styleCounts[opt.style] = (styleCounts[opt.style] || 0) + 1;
+      conflictCounts[opt.conflict] = (conflictCounts[opt.conflict] || 0) + 1;
+      paradigmCounts[opt.paradigm] = (paradigmCounts[opt.paradigm] || 0) + 1;
+      clockScore += opt.clock;
+      if (c === SCENARIOS[i].igerChoice) matchCount++;
+    }
+  });
+  const topStyle = Object.entries(styleCounts).sort((a, b) => b[1] - a[1])[0];
+  const topConflict = Object.entries(conflictCounts).sort((a, b) => b[1] - a[1])[0];
+  const topParadigm = Object.entries(paradigmCounts).sort((a, b) => b[1] - a[1])[0];
+  return { styleCounts, conflictCounts, paradigmCounts, clockScore, matchCount, topStyle: topStyle[0], topConflict: topConflict[0], topParadigm: topParadigm[0] };
+}
+
+function BarChart({ data, color }) {
+  const max = Math.max(...Object.values(data), 1);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      {Object.entries(data).map(([k, v]) => (
+        <div key={k} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "11px", width: "110px", textAlign: "right", textTransform: "capitalize", color: COLORS.shuttle }}>{k}</span>
+          <div style={{ flex: 1, height: "18px", borderRadius: "3px", background: COLORS.pebble + "40" }}>
+            <div style={{ height: "100%", borderRadius: "3px", width: `${(v / max) * 100}%`, background: color, minWidth: v > 0 ? "8px" : "0", transition: "width 0.7s" }} />
+          </div>
+          <span style={{ fontSize: "11px", width: "16px", fontWeight: "bold", color }}>{v}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function App() {
+  const [phase, setPhase] = useState("welcome");
+  const [studentName, setStudentName] = useState("");
+  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [choices, setChoices] = useState(Array(SCENARIOS.length).fill(null));
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [inputMsg, setInputMsg] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const handleChoice = (optIdx) => {
+    const nc = [...choices]; nc[scenarioIdx] = optIdx; setChoices(nc); setShowExplanation(true);
+  };
+  const nextScenario = () => {
+    setShowExplanation(false);
+    if (scenarioIdx < SCENARIOS.length - 1) setScenarioIdx(scenarioIdx + 1);
+    else setPhase("interview");
+  };
+  const sendMessage = async () => {
+    if (!inputMsg.trim() || isLoading) return;
+    const userMsg = inputMsg.trim(); setInputMsg("");
+    setMessages(prev => [...prev, { role: "user", text: userMsg }]); setIsLoading(true);
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 400, system: IGER_SYSTEM,
+          messages: [...messages.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text })), { role: "user", content: userMsg }],
+        }),
+      });
+      const data = await resp.json();
+      const reply = data.content?.find(c => c.type === "text")?.text || "I appreciate the question, but let me focus on what I know well.";
+      setMessages(prev => [...prev, { role: "assistant", text: reply }]);
+    } catch { setMessages(prev => [...prev, { role: "assistant", text: "Let me think about that differently. Could you rephrase?" }]); }
+    setIsLoading(false);
+  };
+
+  const profile = computeProfile(choices);
+  const clockLabel = profile.clockScore >= 7 ? "Strong Clock Builder" : profile.clockScore >= 4 ? "Balanced" : "Time Teller Tendency";
+  const igerMatch = Math.round((profile.matchCount / SCENARIOS.length) * 100);
+
+  // ── WELCOME ──
+  if (phase === "welcome") return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", background: COLORS.cyprus }}>
+      <div style={{ maxWidth: "520px", width: "100%", textAlign: "center" }}>
+        <div style={{ fontSize: "11px", fontWeight: "bold", letterSpacing: "3px", color: COLORS.lima }}>BUS 5001 | SESSION 9.3</div>
+        <h1 style={{ fontSize: "36px", fontWeight: "bold", color: COLORS.white, margin: "12px 0" }}>Disney Leadership Simulator</h1>
+        <p style={{ fontSize: "16px", color: COLORS.mist, marginBottom: "24px" }}>Step into Bob Iger's shoes. Make real leadership decisions. Discover your own leadership style.</p>
+        <input type="text" placeholder="Enter your name" value={studentName} onChange={e => setStudentName(e.target.value)}
+          style={{ width: "100%", padding: "12px", borderRadius: "8px", textAlign: "center", fontSize: "16px", background: COLORS.forest, border: `2px solid ${COLORS.lima}40`, color: COLORS.white, outline: "none", marginBottom: "12px" }} />
+        <button onClick={() => studentName.trim() && setPhase("scenarios")} disabled={!studentName.trim()}
+          style={{ width: "100%", padding: "12px", borderRadius: "8px", fontWeight: "bold", fontSize: "16px", background: COLORS.lima, color: COLORS.forest, border: "none", cursor: "pointer", opacity: studentName.trim() ? 1 : 0.4 }}>
+          Begin the Simulation
+        </button>
+        <div style={{ marginTop: "24px", textAlign: "left", padding: "16px", borderRadius: "8px", background: COLORS.forest }}>
+          <div style={{ fontSize: "11px", fontWeight: "bold", letterSpacing: "2px", color: COLORS.lima, marginBottom: "8px" }}>HOW IT WORKS</div>
+          <p style={{ fontSize: "13px", color: COLORS.mist, margin: "4px 0" }}><strong style={{ color: COLORS.white }}>Phase 1:</strong> Face 5 real Disney leadership decisions.</p>
+          <p style={{ fontSize: "13px", color: COLORS.mist, margin: "4px 0" }}><strong style={{ color: COLORS.white }}>Phase 2:</strong> Interview Bob Iger directly (AI-powered).</p>
+          <p style={{ fontSize: "13px", color: COLORS.mist, margin: "4px 0" }}><strong style={{ color: COLORS.white }}>Phase 3:</strong> Receive your personal Leadership Style Profile.</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── SCENARIOS ──
+  if (phase === "scenarios") {
+    const sc = SCENARIOS[scenarioIdx];
+    return (
+      <div style={{ minHeight: "100vh", padding: "16px", background: COLORS.offWhite }}>
+        <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
+            <span style={{ fontSize: "11px", fontWeight: "bold", letterSpacing: "2px", color: COLORS.orient }}>DECISION {scenarioIdx + 1} OF {SCENARIOS.length}</span>
+            <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "4px", fontWeight: "bold", background: COLORS.mist, color: COLORS.forest }}>{sc.act}</span>
+          </div>
+          <div style={{ width: "100%", height: "4px", borderRadius: "2px", background: COLORS.pebble, marginBottom: "20px" }}>
+            <div style={{ height: "100%", borderRadius: "2px", width: `${((scenarioIdx + 1) / SCENARIOS.length) * 100}%`, background: COLORS.lima, transition: "width 0.5s" }} />
+          </div>
+          <h2 style={{ fontSize: "24px", fontWeight: "bold", color: COLORS.forest, marginBottom: "12px" }}>{sc.title}</h2>
+          <p style={{ color: COLORS.darkGray, lineHeight: 1.6, marginBottom: "20px" }}>{sc.context}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {sc.options.map((opt, i) => {
+              const isChosen = choices[scenarioIdx] === i;
+              const isIger = showExplanation && i === sc.igerChoice;
+              return (
+                <button key={i} onClick={() => !showExplanation && handleChoice(i)} disabled={showExplanation}
+                  style={{ width: "100%", textAlign: "left", padding: "14px", borderRadius: "8px", border: `2px solid ${isIger ? COLORS.lima : isChosen ? COLORS.orient : COLORS.pebble}`, background: isChosen ? (isIger ? COLORS.lima + "20" : COLORS.orient + "15") : COLORS.white, opacity: showExplanation && !isChosen && !isIger ? 0.5 : 1, cursor: showExplanation ? "default" : "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                    <span style={{ fontWeight: "bold", fontSize: "16px", color: isIger ? COLORS.lima : isChosen ? COLORS.orient : COLORS.shuttle }}>{String.fromCharCode(65 + i)}</span>
+                    <div>
+                      <p style={{ color: COLORS.darkGray, margin: 0 }}>{opt.text}</p>
+                      {isChosen && <span style={{ display: "inline-block", marginTop: "6px", fontSize: "11px", fontWeight: "bold", padding: "2px 8px", borderRadius: "4px", background: COLORS.orient, color: COLORS.white }}>YOUR CHOICE</span>}
+                      {isIger && <span style={{ display: "inline-block", marginTop: "6px", marginLeft: "4px", fontSize: "11px", fontWeight: "bold", padding: "2px 8px", borderRadius: "4px", background: COLORS.lima, color: COLORS.forest }}>IGER'S CHOICE</span>}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {showExplanation && (
+            <div style={{ marginTop: "20px", padding: "16px", borderRadius: "8px", borderLeft: `4px solid ${COLORS.forest}`, background: COLORS.mist + "40" }}>
+              <div style={{ fontSize: "11px", fontWeight: "bold", letterSpacing: "2px", color: COLORS.forest, marginBottom: "8px" }}>WHAT IGER ACTUALLY DID</div>
+              <p style={{ fontSize: "13px", lineHeight: 1.6, color: COLORS.darkGray }}>{sc.igerExplanation}</p>
+              <button onClick={nextScenario} style={{ marginTop: "12px", padding: "8px 20px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", background: COLORS.forest, color: COLORS.white, border: "none", cursor: "pointer" }}>
+                {scenarioIdx < SCENARIOS.length - 1 ? "Next Decision" : "Interview Bob Iger"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── INTERVIEW ──
+  if (phase === "interview") return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: COLORS.offWhite }}>
+      <div style={{ padding: "12px", textAlign: "center", background: COLORS.cyprus }}>
+        <div style={{ fontSize: "11px", fontWeight: "bold", letterSpacing: "2px", color: COLORS.lima }}>PHASE 2: INTERVIEW</div>
+        <h2 style={{ fontSize: "18px", fontWeight: "bold", color: COLORS.white, margin: "4px 0" }}>Ask Bob Iger About His Leadership</h2>
+        <p style={{ fontSize: "11px", color: COLORS.mist }}>Ask about any decision, principle, or challenge. Iger responds based on verified facts.</p>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px", maxWidth: "700px", margin: "0 auto", width: "100%", maxHeight: "50vh" }}>
+        {messages.length === 0 && (
+          <div style={{ textAlign: "center", padding: "24px 0" }}>
+            <p style={{ fontSize: "13px", color: COLORS.shuttle, marginBottom: "12px" }}>Try asking about:</p>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "8px" }}>
+              {["How did you convince Steve Jobs to sell Pixar?", "What was your biggest leadership mistake?", "Why did you come back from retirement?", "What makes a good leader?"].map(q => (
+                <button key={q} onClick={() => setInputMsg(q)} style={{ fontSize: "11px", padding: "6px 12px", borderRadius: "20px", border: `1px solid ${COLORS.orient}`, background: "transparent", color: COLORS.orient, cursor: "pointer" }}>{q}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", marginBottom: "10px" }}>
+            <div style={{ maxWidth: "400px", padding: "10px 14px", borderRadius: "16px", fontSize: "13px", background: m.role === "user" ? COLORS.orient : COLORS.white, color: m.role === "user" ? COLORS.white : COLORS.darkGray, border: m.role === "user" ? "none" : `1px solid ${COLORS.pebble}` }}>
+              {m.role === "assistant" && <div style={{ fontSize: "11px", fontWeight: "bold", color: COLORS.forest, marginBottom: "4px" }}>Bob Iger</div>}
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {isLoading && <div style={{ display: "flex" }}><div style={{ padding: "10px 14px", borderRadius: "16px", fontSize: "13px", fontStyle: "italic", background: COLORS.white, color: COLORS.shuttle, border: `1px solid ${COLORS.pebble}` }}>Iger is thinking...</div></div>}
+        <div ref={chatEndRef} />
+      </div>
+      <div style={{ padding: "12px", borderTop: `1px solid ${COLORS.pebble}`, maxWidth: "700px", margin: "0 auto", width: "100%" }}>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <input type="text" value={inputMsg} onChange={e => setInputMsg(e.target.value)} onKeyDown={e => e.key === "Enter" && sendMessage()}
+            placeholder="Ask Iger a question..." style={{ flex: 1, padding: "10px", borderRadius: "8px", border: `2px solid ${COLORS.pebble}`, fontSize: "13px", outline: "none" }} />
+          <button onClick={sendMessage} disabled={isLoading || !inputMsg.trim()} style={{ padding: "10px 20px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", background: COLORS.forest, color: COLORS.white, border: "none", cursor: "pointer", opacity: isLoading || !inputMsg.trim() ? 0.4 : 1 }}>Send</button>
+        </div>
+        <div style={{ textAlign: "center", marginTop: "10px" }}>
+          <button onClick={() => setPhase("profile")} style={{ padding: "8px 24px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", background: COLORS.lima, color: COLORS.forest, border: "none", cursor: "pointer" }}>View My Leadership Profile</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── PROFILE ──
+  if (phase === "profile") {
+    const scenarioSummary = SCENARIOS.map((sc, i) => {
+      const chose = choices[i]; const matched = chose === sc.igerChoice;
+      return { title: sc.title, act: sc.act, choice: chose !== null ? String.fromCharCode(65 + chose) : "?", matched, option: chose !== null ? sc.options[chose] : null };
+    });
+    return (
+      <div style={{ minHeight: "100vh", padding: "16px", background: COLORS.offWhite }}>
+        <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+          {/* Screenshot Card */}
+          <div style={{ borderRadius: "12px", overflow: "hidden", border: `2px solid ${COLORS.forest}`, marginBottom: "20px" }}>
+            <div style={{ padding: "16px", textAlign: "center", background: COLORS.cyprus }}>
+              <div style={{ fontSize: "11px", fontWeight: "bold", letterSpacing: "3px", color: COLORS.lima }}>BUS 5001 | DISNEY LEADERSHIP SIMULATOR</div>
+              <h2 style={{ fontSize: "24px", fontWeight: "bold", color: COLORS.white, margin: "6px 0" }}>{studentName}'s Leadership Profile</h2>
+              <p style={{ fontSize: "11px", color: COLORS.mist }}>Based on 5 Disney CEO decisions + Iger interview</p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+              <div style={{ padding: "14px", textAlign: "center", background: COLORS.forest }}>
+                <div style={{ fontSize: "30px", fontWeight: "bold", color: COLORS.lima }}>{igerMatch}%</div>
+                <div style={{ fontSize: "11px", color: COLORS.mist }}>Iger Alignment</div>
+              </div>
+              <div style={{ padding: "14px", textAlign: "center", background: COLORS.orient }}>
+                <div style={{ fontSize: "30px", fontWeight: "bold", color: COLORS.white }}>{profile.clockScore}/10</div>
+                <div style={{ fontSize: "11px", color: COLORS.mist }}>{clockLabel}</div>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", textAlign: "center", background: COLORS.white }}>
+              {[{ label: "STYLE", value: profile.topStyle, color: COLORS.forest }, { label: "CONFLICT", value: profile.topConflict, color: COLORS.orient }, { label: "PARADIGM", value: profile.topParadigm, color: COLORS.cyprus }].map((item, i) => (
+                <div key={i} style={{ padding: "10px", borderRight: i < 2 ? `1px solid ${COLORS.pebble}` : "none" }}>
+                  <div style={{ fontSize: "10px", fontWeight: "bold", letterSpacing: "1px", color: item.color, marginBottom: "4px" }}>{item.label}</div>
+                  <div style={{ fontSize: "13px", fontWeight: "bold", textTransform: "capitalize", color: COLORS.darkGray }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: "10px 14px", background: COLORS.offWhite }}>
+              <div style={{ fontSize: "10px", fontWeight: "bold", letterSpacing: "1px", color: COLORS.shuttle, marginBottom: "6px" }}>YOUR 5 DECISIONS</div>
+              {scenarioSummary.map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", marginBottom: "3px" }}>
+                  <span style={{ width: "20px", height: "20px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "10px", background: s.matched ? COLORS.lima : COLORS.pebble, color: s.matched ? COLORS.forest : COLORS.shuttle }}>{s.choice}</span>
+                  <strong style={{ color: COLORS.darkGray }}>{s.title}</strong>
+                  <span style={{ padding: "1px 6px", borderRadius: "3px", fontSize: "9px", background: COLORS.mist, color: COLORS.forest }}>{s.act}</span>
+                  {s.matched && <span style={{ fontSize: "9px", color: COLORS.lima }}>= Iger</span>}
+                  {s.option && <span style={{ marginLeft: "auto", textTransform: "capitalize", color: COLORS.shuttle }}>{s.option.style} / {s.option.paradigm}</span>}
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: "8px", textAlign: "center", background: COLORS.forest }}>
+              <span style={{ fontSize: "11px", fontWeight: "bold", color: COLORS.lima }}>SCREENSHOT THIS CARD FOR YOUR RECORDS</span>
+            </div>
+          </div>
+
+          {/* Detailed Charts */}
+          {[{ title: "LEADERSHIP STYLE BREAKDOWN", data: profile.styleCounts, color: COLORS.forest, desc: profile.topStyle === "democratic" ? "You favor consensus. Strong for innovation, may be slow in crisis." : profile.topStyle === "authoritarian" ? "You favor decisive action. Effective in crisis, may erode trust." : "You trust teams to self-direct. Great with experts, may appear disengaged." },
+            { title: "CONFLICT-HANDLING MODE", data: profile.conflictCounts, color: COLORS.orient, desc: profile.topConflict === "collaborating" ? "You seek win-win solutions. Takes time but builds buy-in." : profile.topConflict === "competing" ? "You push your position. Fast but can create resistance." : profile.topConflict === "compromising" ? "You find middle ground. Diplomatic but may leave both sides unsatisfied." : profile.topConflict === "avoiding" ? "You sidestep conflict. Sometimes wise, but issues may fester." : "You yield to maintain relationships." },
+            { title: "LEADERSHIP PARADIGM", data: profile.paradigmCounts, color: COLORS.cyprus, desc: profile.topParadigm === "transformational" ? "You aim to change culture, not just work within it." : profile.topParadigm === "visionary" ? "You provide clear direction around ambitious goals." : profile.topParadigm === "dispersed" ? "You distribute leadership and trust teams." : "You focus on systems, goals, and rewards." },
+          ].map((chart, i) => (
+            <div key={i} style={{ padding: "14px", borderRadius: "12px", border: `1px solid ${COLORS.pebble}`, background: COLORS.white, marginBottom: "14px" }}>
+              <h3 style={{ fontSize: "12px", fontWeight: "bold", color: chart.color, marginBottom: "10px" }}>{chart.title}</h3>
+              <BarChart data={chart.data} color={chart.color} />
+              <div style={{ marginTop: "10px", fontSize: "11px", padding: "8px", borderRadius: "4px", background: COLORS.mist + "40", color: COLORS.forest }}>
+                <strong>Your tendency:</strong> {profile[i === 0 ? "topStyle" : i === 1 ? "topConflict" : "topParadigm"].charAt(0).toUpperCase() + profile[i === 0 ? "topStyle" : i === 1 ? "topConflict" : "topParadigm"].slice(1)} — {chart.desc}
+              </div>
+            </div>
+          ))}
+
+          {/* Clock Builder */}
+          <div style={{ padding: "16px", borderRadius: "12px", border: `1px solid ${COLORS.pebble}`, background: COLORS.white, textAlign: "center", marginBottom: "14px" }}>
+            <h3 style={{ fontSize: "12px", fontWeight: "bold", color: COLORS.forest, marginBottom: "10px" }}>CLOCK BUILDER vs. TIME TELLER</h3>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "bold", color: COLORS.orient }}>Time Teller</span>
+              <div style={{ width: "180px", height: "10px", borderRadius: "5px", background: COLORS.pebble }}>
+                <div style={{ height: "100%", borderRadius: "5px", width: `${(profile.clockScore / 10) * 100}%`, background: `linear-gradient(to right, ${COLORS.orient}, ${COLORS.lima})`, transition: "width 0.7s" }} />
+              </div>
+              <span style={{ fontSize: "11px", fontWeight: "bold", color: COLORS.lima }}>Clock Builder</span>
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: "bold", color: COLORS.forest, marginTop: "6px" }}>{clockLabel}</div>
+            <p style={{ fontSize: "11px", color: COLORS.shuttle }}>Score: {profile.clockScore}/10</p>
+          </div>
+
+          {/* Next Step */}
+          <div style={{ padding: "14px", borderRadius: "12px", background: COLORS.mist, marginBottom: "14px" }}>
+            <div style={{ fontSize: "10px", fontWeight: "bold", letterSpacing: "2px", color: COLORS.forest, marginBottom: "6px" }}>NEXT STEP</div>
+            <p style={{ fontSize: "13px", color: COLORS.forest }}>Complete the reflection worksheet. Compare your profile to your focal company's leader. Submit screenshot + worksheet on Canvas.</p>
+          </div>
+
+          <button onClick={() => { setPhase("welcome"); setChoices(Array(SCENARIOS.length).fill(null)); setScenarioIdx(0); setMessages([]); setShowExplanation(false); setStudentName(""); }}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", background: COLORS.pebble, color: COLORS.darkGray, border: "none", cursor: "pointer" }}>Start Over</button>
+        </div>
+      </div>
+    );
+  }
+}
+
+ReactDOM.render(<App />, document.getElementById("root"));
+</script>
+</body>
+</html>
